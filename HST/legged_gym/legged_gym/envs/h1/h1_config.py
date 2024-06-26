@@ -35,7 +35,7 @@ class H1RoughCfg( BaseConfig ):
         delay = 0.0 # delay in seconds
         freq = 10
         resample_on_env_reset = True
-        filename = 'ACCAD_walk_10fps.npy'
+        filename = 'amass_isaac_h1.npy'
         
     class env:
         num_envs = 2048
