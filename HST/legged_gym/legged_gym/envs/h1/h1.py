@@ -162,7 +162,7 @@ class H1():
     def _init_target_jt(self):
         self.target_jt_seq, self.target_jt_seq_len = load_target_jt(self.device, self.cfg.human.filename, self.default_dof_pos)
         self.num_target_jt_seq, self.max_target_jt_seq_len, self.dim_target_jt = self.target_jt_seq.shape
-        print(f"Loaded target joint trajectories of shape {self.target_jt_seq.shape}")
+        print(f"self.cfg.human.filename:{self.cfg.human.filename}, Loaded target joint trajectories of shape: {self.target_jt_seq.shape}")
         assert(self.dim_target_jt == self.num_dofs)
         self.target_jt_i = torch.randint(0, self.num_target_jt_seq, (self.num_envs,), device=self.device)
         self.target_jt_j = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
@@ -826,7 +826,8 @@ class H1():
         termination_contact_names = []
         for name in self.cfg.asset.terminate_after_contacts_on:
             termination_contact_names.extend([s for s in body_names if name in s])
-
+        print(f"termination_contact_names:{termination_contact_names}")
+        sys.exit()
         base_init_state_list = self.cfg.init_state.pos + self.cfg.init_state.rot + self.cfg.init_state.lin_vel + self.cfg.init_state.ang_vel
         self.base_init_state = to_torch(base_init_state_list, device=self.device, requires_grad=False)
         start_pose = gymapi.Transform()

@@ -20,6 +20,9 @@ dist/
 *.pkl
 *.hdf5
 
+# dev
+isaacgym/
+*.npy
 
 # Compiled Java class files
 *.class
