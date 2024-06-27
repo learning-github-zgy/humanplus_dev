@@ -185,9 +185,9 @@ class H1RoughCfg( BaseConfig ):
         max_contact_force = 100. # forces above this value are penalized
 
     class termination:
-        r_threshold = 0.5
-        p_threshold = 0.5
-        z_threshold = 0.85
+        r_threshold = 0.5  # roll偏离28度
+        p_threshold = 0.5  # pitch偏离28度
+        z_threshold = 0.85 # 根关节离地面0.85
 
     class normalization:
         class obs_scales:
@@ -274,7 +274,7 @@ class H1RoughCfgPPO(BaseConfig):
         max_iterations = 15000 # number of policy updates
 
         # logging
-        save_interval = 1000 # check for potential saves every this many iterations
+        save_interval = 500 # check for potential saves every this many iterations
         experiment_name = 'rough_h1'
         run_name = None
         # load and resume

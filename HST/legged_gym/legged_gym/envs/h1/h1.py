@@ -826,8 +826,8 @@ class H1():
         termination_contact_names = []
         for name in self.cfg.asset.terminate_after_contacts_on:
             termination_contact_names.extend([s for s in body_names if name in s])
-        print(f"termination_contact_names:{termination_contact_names}")
-        sys.exit()
+        
+        # sys.exit()
         base_init_state_list = self.cfg.init_state.pos + self.cfg.init_state.rot + self.cfg.init_state.lin_vel + self.cfg.init_state.ang_vel
         self.base_init_state = to_torch(base_init_state_list, device=self.device, requires_grad=False)
         start_pose = gymapi.Transform()
@@ -868,9 +868,9 @@ class H1():
         for i in range(len(termination_contact_names)):
             self.termination_contact_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], termination_contact_names[i])
 
-        print('penalized_contact_indices: {}'.format(self.penalized_contact_indices))
-        print('termination_contact_indices: {}'.format(self.termination_contact_indices))
-        print('feet_indices: {}'.format(self.feet_indices))
+        print(f"penalized_contact_indices: {self.penalized_contact_indices},name:{self.penalized_contact_indices}")
+        print(f"termination_contact_indices: {self.termination_contact_indices},termination_contact_names:{termination_contact_names}")
+        print(f"feet_indices: {self.feet_indices},name:{feet_names}")
 
     def _get_env_origins(self):
         """ Sets environment origins. On rough terrain the origins are defined by the terrain platforms.

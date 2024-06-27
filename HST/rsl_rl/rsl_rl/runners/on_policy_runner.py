@@ -245,6 +245,10 @@ class OnPolicyRunner:
         print(log_string)
 
     def save(self, path, infos=None):
+        # 检查路径是否存在，否则就创建
+        directory = os.path.dirname(path)
+        if not os.path.exists(directory):
+            os.makedirs(directory)
         torch.save({
             'model_state_dict': self.alg.actor_critic.state_dict(),
             'optimizer_state_dict': self.alg.optimizer.state_dict(),
