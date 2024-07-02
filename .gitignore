@@ -23,6 +23,7 @@ dist/
 # dev
 isaacgym/
 *.npy
+wandb/
 
 # Compiled Java class files
 *.class
@@ -32,6 +33,8 @@ isaacgym/
 
 # Log files
 *.log
+
+
 
 # Package files
 *.jar

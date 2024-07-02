@@ -33,12 +33,13 @@ from legged_gym.envs.base.base_config import BaseConfig
 class H1RoughCfg( BaseConfig ):
     class human:
         delay = 0.0 # delay in seconds
-        freq = 10
+        freq = 30
         resample_on_env_reset = True
-        filename = 'amass_isaac_h1.npy'
+        # filename = 'ACCAD_walk_10fps.npy'
+        filename = 'amass_humanplus_data_10092.npy'
         
     class env:
-        num_envs = 2048
+        num_envs = 1024
         num_dofs = 19
         num_observations = 65 + num_dofs  # TODO
         num_privileged_obs = None # if not None a priviledge_obs_buf will be returned by step() (critic obs for assymetric training). None is returned otherwise 
@@ -103,7 +104,9 @@ class H1RoughCfg( BaseConfig ):
             'right_hip_pitch_joint': -0.349,
             'right_knee_joint': 0.698,
             'right_ankle_joint': -0.349,
+
             'torso_joint': 0.0,
+
             'left_shoulder_pitch_joint': 0.0,
             'left_shoulder_roll_joint': 0.0,
             'left_shoulder_yaw_joint': 0.0,
@@ -174,7 +177,7 @@ class H1RoughCfg( BaseConfig ):
             action_rate = -0.
             stand_still = -0.
             dof_pos_limits = -0.0
-            target_jt = 1
+            target_jt = 1  # 追踪目标target的奖励，目标关节角度就是动捕数据文件中的关节
 
         only_positive_rewards = False # if true negative total rewards are clipped at zero (avoids early termination problems)
         tracking_sigma = 0.25 # tracking reward = exp(-error^2/sigma)

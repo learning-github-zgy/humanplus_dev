@@ -161,11 +161,12 @@ class H1():
 
     def _init_target_jt(self):
         self.target_jt_seq, self.target_jt_seq_len = load_target_jt(self.device, self.cfg.human.filename, self.default_dof_pos)
-        self.num_target_jt_seq, self.max_target_jt_seq_len, self.dim_target_jt = self.target_jt_seq.shape
-        print(f"self.cfg.human.filename:{self.cfg.human.filename}, Loaded target joint trajectories of shape: {self.target_jt_seq.shape}")
+        self.num_target_jt_seq, self.max_target_jt_seq_len, self.dim_target_jt = self.target_jt_seq.shape # 10092,100,19
+        print(f"self.cfg.human.filename:{self.cfg.human.filename}, Loaded target joint trajectories of shape: {self.target_jt_seq.shape},num_target_jt_seq:{self.num_target_jt_seq}")
+        # sys.exit()
         assert(self.dim_target_jt == self.num_dofs)
-        self.target_jt_i = torch.randint(0, self.num_target_jt_seq, (self.num_envs,), device=self.device)
-        self.target_jt_j = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
+        self.target_jt_i = torch.randint(0, self.num_target_jt_seq, (self.num_envs,), device=self.device) #　选择哪个序列　
+        self.target_jt_j = torch.zeros(self.num_envs, dtype=torch.long, device=self.device) # 选择哪个环境
         self.target_jt_dt = 1 / self.cfg.human.freq
         self.target_jt_update_steps = self.target_jt_dt / self.dt # not necessary integer
         assert(self.dt <= self.target_jt_dt)
@@ -179,6 +180,8 @@ class H1():
 
     def update_target_jt(self, reset_env_ids):
         self.target_jt = self.target_jt_seq[self.target_jt_i, self.target_jt_j]
+        self.target_jt_seq_len = self.target_jt_seq[self.target_jt_i].shape[1] # 这里修改了每个序列的长度，因为原数据是不规则，需要针对每个序列重新求最大长度
+        assert(self.target_jt_seq_len == self.target_jt_j.shape) # 查看序列长度是否一致
         self.delayed_obs_target_jt = self.target_jt_seq[self.target_jt_i, torch.maximum(self.target_jt_j - self.delayed_obs_target_jt_steps_int, torch.tensor(0))]
         resample_i = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
         if self.common_step_counter % self.target_jt_update_steps_int == 0:
