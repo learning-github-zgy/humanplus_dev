@@ -39,7 +39,7 @@ class H1RoughCfg( BaseConfig ):
         filename = 'amass_humanplus_data_10092.npy'
         
     class env:
-        num_envs = 1024
+        num_envs = 2048
         num_dofs = 19
         num_observations = 65 + num_dofs  # TODO
         num_privileged_obs = None # if not None a priviledge_obs_buf will be returned by step() (critic obs for assymetric training). None is returned otherwise 

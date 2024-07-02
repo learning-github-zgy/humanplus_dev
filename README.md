@@ -61,12 +61,33 @@ To train HIT:
     # Fold Clothes task
     python imitate_episodes_h1_train.py --task_name data_fold_clothes --ckpt_dir fold_clothes/ --policy_class HIT --chunk_size 50 --hidden_dim 512 --batch_size 48 --dim_feedforward 512 --lr 1e-5 --seed 0 --num_steps 100000 --eval_every 100000 --validate_every 1000 --save_every 10000 --no_encoder --backbone resnet18 --same_backbones --use_pos_embd_image 1 --use_pos_embd_action 1 --dec_layers 6 --gpu_id 0 --feature_loss_weight 0.005 --use_mask --data_aug --wandb
 
+## Hardware Codebase
+Hardware codebase is based on [unitree_ros2](https://github.com/unitreerobotics/unitree_ros2).
+
+#### Installation
+
+install [unitree_sdk](https://github.com/unitreerobotics/unitree_sdk2)
+
+install [unitree_ros2](https://support.unitree.com/home/en/developer/ROS2_service)
+
+    conda create -n lowlevel python=3.8
+    conda activate lowlevel
+
+install [nvidia-jetpack](https://docs.nvidia.com/jetson/archives/jetpack-archived/jetpack-461/install-jetpack/index.html)
+
+install torch==1.11.0 and torchvision==0.12.0:  
+please refer to the following links:   
+https://forums.developer.nvidia.com/t/pytorch-for-jetson/72048
+https://docs.nvidia.com/deeplearning/frameworks/install-pytorch-jetson-platform/index.html
+
+#### Example Usages
+Put your trained policy in the `hardware-script/ckpt` folder and rename it to `policy.pt`
+
+    conda activate lowlevel
+    cd hardware-script
+    python hardware_whole_body.py --task_name stand
+
 
 ## Pose Estimation
 For body pose estimation, please refer to [WHAM](https://github.com/yohanshin/WHAM). 
 For hand pose estimation, please refer to [HaMeR](https://github.com/geopavlakos/hamer). 
-
-
-## Hardware Codebase
-For the hardware codebase, please refer to [unitree_sdk2](https://github.com/unitreerobotics/unitree_sdk2/tree/main/example/humanoid/low_level).
-
