@@ -1,7 +1,7 @@
 import os
 
 ### Task parameters
-DATA_DIR = f'{os.path.dirname(os.path.realpath(__file__))}/data' 
+DATA_DIR = f'{os.path.dirname(os.path.realpath(__file__))}/public_datasets' 
 
 TASK_CONFIGS = {
     'data_fold_clothes':{

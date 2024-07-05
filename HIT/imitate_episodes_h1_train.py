@@ -20,7 +20,7 @@ def forward_pass(data, policy):
 
 def train_bc(train_dataloader, val_dataloader, config):
     num_steps = config['num_steps']
-    ckpt_dir = config['ckpt_dir']
+    ckpt_dir = config['ckpt_dir'] # 检查点的位置，训练之后保存模型的位置
     seed = config['seed']
     policy_class = config['policy_class']
     policy_config = config['policy_config']
@@ -155,7 +155,7 @@ def main_train(args):
     print(f'ckpt_dir: {ckpt_dir}')
     print(f'policy_class: {policy_class}')
     # fixed parameters
-    state_dim = task_config.get('state_dim', 40)
+    state_dim = task_config.get('state_dim', 40) # 第二个是默认值
     action_dim = task_config.get('action_dim', 40)
     state_mask = task_config.get('state_mask', np.ones(state_dim))
     action_mask = task_config.get('action_mask', np.ones(action_dim))
@@ -304,14 +304,15 @@ def main_train(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    # action:是否将参数存储在命名空间中；type:将参数转换为什么类型；required：该参数是否是必需指定的；
     parser.add_argument('--config', action='store', type=str, help='config file', required=False)
     parser.add_argument('--eval', action='store_true')
     parser.add_argument('--onscreen_render', action='store_true')
     parser.add_argument('--ckpt_dir', default="h1_ckpt/0", action='store', type=str, help='ckpt_dir')
-    parser.add_argument('--policy_class', default="ACT", action='store', type=str, help='policy_class, capitalize')
+    parser.add_argument('--policy_class', default="HIT", action='store', type=str, help='policy_class, capitalize') #默认是ACT
     parser.add_argument('--task_name', default="h1_fold_shirt_0420-0006", action='store', type=str, help='task_name')
     
-    parser.add_argument('--batch_size', default=32, action='store', type=int, help='batch_size')
+    parser.add_argument('--batch_size', default=48, action='store', type=int, help='batch_size') #原来默认是32
     parser.add_argument('--seed', default=0, action='store', type=int, help='seed')
     parser.add_argument('--num_steps', default=100000, action='store', type=int, help='num_steps')
     parser.add_argument('--lr', default=1e-5, action='store', type=float, help='lr')
@@ -330,18 +331,18 @@ if __name__ == '__main__':
 
     # for ACT
     parser.add_argument('--kl_weight', action='store', type=int, help='KL Weight', required=False)
-    parser.add_argument('--chunk_size', action='store', type=int, help='chunk_size', required=False)
-    parser.add_argument('--hidden_dim', action='store', type=int, help='hidden_dim', required=False)
-    parser.add_argument('--dim_feedforward', action='store', type=int, help='dim_feedforward', required=False)
+    parser.add_argument('--chunk_size', action='store', type=int, help='chunk_size', required=False, default=50 )
+    parser.add_argument('--hidden_dim', action='store', type=int, help='hidden_dim', required=False, default=512)
+    parser.add_argument('--dim_feedforward', action='store', type=int, help='dim_feedforward', required=False, default=512)
     parser.add_argument('--no_encoder', action='store_true')
     #dec_layers
     parser.add_argument('--dec_layers', action='store', type=int, default=7, required=False)
     parser.add_argument('--nheads', action='store', type=int, default=8, required=False)
-    parser.add_argument('--use_pos_embd_image', action='store', type=int, default=0, required=False)
-    parser.add_argument('--use_pos_embd_action', action='store', type=int, default=0, required=False)
+    parser.add_argument('--use_pos_embd_image', action='store', type=int, default=1, required=False) # 原来默认是0
+    parser.add_argument('--use_pos_embd_action', action='store', type=int, default=1, required=False) # 原来默认是0
     
     #feature_loss_weight
-    parser.add_argument('--feature_loss_weight', action='store', type=float, default=0.0)
+    parser.add_argument('--feature_loss_weight', action='store', type=float, default=0.005) #原来默认是0
     #self_attention
     parser.add_argument('--self_attention', action="store", type=int, default=1)
     
@@ -368,8 +369,8 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
     torch.cuda.set_device(args.gpu_id)
-    PROJECT_NAME = 'H1'
-    WANDB_USERNAME = "WANDB_USERNAME"
+    PROJECT_NAME = 'H1-HST'
+    WANDB_USERNAME = "dt-robotic" # 改成自己wandb账号的名称
     main_train(vars(args))
     
  

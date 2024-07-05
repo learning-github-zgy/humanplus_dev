@@ -33,7 +33,7 @@ from legged_gym.envs.base.base_config import BaseConfig
 class H1RoughCfg( BaseConfig ):
     class human:
         delay = 0.0 # delay in seconds
-        freq = 30
+        freq = 30 # 看动捕数据的频率
         resample_on_env_reset = True
         # filename = 'ACCAD_walk_10fps.npy'
         filename = 'amass_humanplus_data_10092.npy'
@@ -84,9 +84,9 @@ class H1RoughCfg( BaseConfig ):
         heading_command = True # if true: compute ang vel command from heading error
         class ranges:
             lin_vel_x = [0.9, 0.9] # min max [m/s]
-            lin_vel_y = [0, 0]   # min max [m/s]
-            ang_vel_yaw = [0, 0]    # min max [rad/s]
-            heading = [0, 0]
+            lin_vel_y = [0., 0]   # min max [m/s]
+            ang_vel_yaw = [0., 0]    # min max [rad/s]
+            heading = [0., 0]
 
     class init_state:
         pos = [0.0, 0.0, 1.05] # x,y,z [m]
@@ -132,7 +132,7 @@ class H1RoughCfg( BaseConfig ):
         file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/h1/urdf/h1.urdf'
         name = "h1"
         foot_name = 'ankle'
-        penalize_contacts_on = []
+        penalize_contacts_on = ["knee", 'shoulder',]
         terminate_after_contacts_on = ['pelvis', 'hip', 'shoulder', 'elbow', 'knee']
         disable_gravity = False
         collapse_fixed_joints = True # merge bodies connected by fixed joints. Specific fixed joints can be kept by adding " <... dont_collapse="true">
@@ -161,24 +161,27 @@ class H1RoughCfg( BaseConfig ):
 
     class rewards:
         class scales:
+            # 奖励缩放系数，即计算的reward最后要乘这个缩放数值，reward一般是0-1之间，这个缩放系数也可正可负
+            # TODO：待补充缩放系数
             termination = -0.0
             tracking_lin_vel = 0.1
             tracking_ang_vel = 0.1
             lin_vel_z = -0
             ang_vel_xy = -0
             orientation = -0.
-            torques = -0.0
+            torques = -0.1
             dof_vel = -0.
             dof_acc = -0.
-            base_height = -0. 
-            feet_air_time = 0.
-            collision = -0.
-            feet_stumble = -0.0 
+            base_height = -0.1 
+            feet_air_time = 0.4
+            collision = -0.1
+            feet_stumble = -0.1 
             action_rate = -0.
-            stand_still = -0.
-            dof_pos_limits = -0.0
+            stand_still = -0.1
+            dof_pos_limits = -0.1
             target_jt = 1  # 追踪目标target的奖励，目标关节角度就是动捕数据文件中的关节
-
+        
+        # reward函数中的计算所需要的超参数，比如所sigma或者height target等等
         only_positive_rewards = False # if true negative total rewards are clipped at zero (avoids early termination problems)
         tracking_sigma = 0.25 # tracking reward = exp(-error^2/sigma)
         soft_dof_pos_limit = 1. # percentage of urdf limits, values above this limit are penalized
@@ -186,6 +189,15 @@ class H1RoughCfg( BaseConfig ):
         soft_torque_limit = 1.
         base_height_target = 1.
         max_contact_force = 100. # forces above this value are penalized
+        height_error_sigma = 0.2
+        torques_sigma = 300
+        pos_limit_sigma = 8
+        dof_vel_limit_sigma = 0.25
+        torque_limit_sigma = 0.5
+        feet_air_time_sigma = 0.7
+        stand_still_sigma = 0.7
+        feet_contact_forces_sigma = 5
+
 
     class termination:
         r_threshold = 0.5  # roll偏离28度
@@ -274,7 +286,7 @@ class H1RoughCfgPPO(BaseConfig):
         policy_class_name = 'ActorCriticTransformer'
         algorithm_class_name = 'PPO'
         num_steps_per_env = 32 # per iteration
-        max_iterations = 15000 # number of policy updates
+        max_iterations = 25000 # number of policy updates 原来是15k轮
 
         # logging
         save_interval = 500 # check for potential saves every this many iterations

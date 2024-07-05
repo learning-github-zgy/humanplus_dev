@@ -165,7 +165,7 @@ class H1():
         print(f"self.cfg.human.filename:{self.cfg.human.filename}, Loaded target joint trajectories of shape: {self.target_jt_seq.shape},num_target_jt_seq:{self.num_target_jt_seq}")
         # sys.exit()
         assert(self.dim_target_jt == self.num_dofs)
-        self.target_jt_i = torch.randint(0, self.num_target_jt_seq, (self.num_envs,), device=self.device) #　选择哪个序列　
+        self.target_jt_i = torch.randint(0, self.num_target_jt_seq, (self.num_envs,), device=self.device) #　选择哪个动作序列　
         self.target_jt_j = torch.zeros(self.num_envs, dtype=torch.long, device=self.device) # 选择哪个环境
         self.target_jt_dt = 1 / self.cfg.human.freq
         self.target_jt_update_steps = self.target_jt_dt / self.dt # not necessary integer
@@ -179,14 +179,15 @@ class H1():
 
 
     def update_target_jt(self, reset_env_ids):
-        self.target_jt = self.target_jt_seq[self.target_jt_i, self.target_jt_j]
-        self.target_jt_seq_len = self.target_jt_seq[self.target_jt_i].shape[1] # 这里修改了每个序列的长度，因为原数据是不规则，需要针对每个序列重新求最大长度
-        assert(self.target_jt_seq_len == self.target_jt_j.shape) # 查看序列长度是否一致
+        #根据索引对去索引序列，即从target_jt_i和target_jt_j中各选择一个元素形成一个[i,j]的索引，去选择序列帧，i代表选择第i个动作序列，j代表选择第j帧。
+        self.target_jt = self.target_jt_seq[self.target_jt_i, self.target_jt_j] 
         self.delayed_obs_target_jt = self.target_jt_seq[self.target_jt_i, torch.maximum(self.target_jt_j - self.delayed_obs_target_jt_steps_int, torch.tensor(0))]
         resample_i = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
         if self.common_step_counter % self.target_jt_update_steps_int == 0:
             self.target_jt_j += 1
-            jt_eps_end_bool = self.target_jt_j >= self.target_jt_seq_len
+            #！target_jt_j是一个动作序列里面的一帧，但是一共有2048个环境；所以target_jt_seq_len就要对应2048个环境中选择每一个动作序列的长度
+            #！ 所以self.target_jt_seq_len[self.target_jt_j]要进行索引，选择和每个环境对应的序列
+            jt_eps_end_bool = self.target_jt_j >= self.target_jt_seq_len[self.target_jt_j]                           
             self.target_jt_j = torch.where(jt_eps_end_bool, torch.zeros_like(self.target_jt_j), self.target_jt_j)
             resample_i[jt_eps_end_bool.nonzero(as_tuple=False).flatten()] = True
             self.target_jt_update_steps_int = sample_int_from_float(self.target_jt_update_steps)
@@ -1017,6 +1018,8 @@ class H1():
                 self.gym.poll_viewer_events(self.viewer)
 
     #------------ reward functions----------------
+    # 一共有两个返回值，第一个是计算的reward数值，0-1之间，用exp函数，这部分可以再看看论文；第二个是当前的指标，类似于ase中的上帝之眼。
+    #TODO：待修改奖励函数
     def _reward_lin_vel_z(self):
         # Penalize z axis base linear velocity
         return torch.square(self.base_lin_vel[:, 2])
@@ -1029,14 +1032,16 @@ class H1():
         # Penalize non flat base orientation
         return torch.sum(torch.square(self.projected_gravity[:, :2]), dim=1)
 
-    def _reward_base_height(self):
+    def _reward_base_height(self):  # 惩罚高度没有达到基础高度，暂时不加，因为有些动作可能高度确实没有达到
         # Penalize base height away from target
         base_height = torch.mean(self.root_states[:, 2].unsqueeze(1) - self.measured_heights, dim=1)
-        return torch.square(base_height - self.cfg.rewards.base_height_target)
+        height_error = torch.mean(self.cfg.rewards.base_height_target - base_height).clip(min=0.)
+        return 1-torch.exp(-height_error/self.cfg.rewards.height_error_sigma), height_error
     
-    def _reward_torques(self):
+    def _reward_torques(self): # 新增关节力矩限制
         # Penalize torques
-        return torch.sum(torch.square(self.torques), dim=1)
+        torques = torch.mean(torch.square(self.torques), dim=1)
+        return torch.exp(-torques/self.cfg.rewards.torques_sigma), torques
 
     def _reward_dof_vel(self):
         # Penalize dof velocities
@@ -1050,9 +1055,10 @@ class H1():
         # Penalize changes in actions
         return torch.sum(torch.square(self.last_actions - self.actions), dim=1)
     
-    def _reward_collision(self):
+    def _reward_collision(self): # 惩罚关节触地
         # Penalize collisions on selected bodies
-        return torch.sum(1.*(torch.norm(self.contact_forces[:, self.penalized_contact_indices, :], dim=-1) > 0.1), dim=1)
+        collision = torch.mean(1.*(torch.norm(self.contact_forces[:, self.penalized_contact_indices, :], dim=-1) > 0.1), dim=1)
+        return collision, collision
     
     def _reward_termination(self):
         # Terminal reward / penalty
@@ -1062,28 +1068,32 @@ class H1():
         # Penalize dof positions too close to the limit
         out_of_limits = -(self.dof_pos - self.dof_pos_limits[:, 0]).clip(max=0.) # lower limit
         out_of_limits += (self.dof_pos - self.dof_pos_limits[:, 1]).clip(min=0.)
-        return torch.sum(out_of_limits, dim=1)
+        pos_limit = torch.sum(out_of_limits, dim=1)
+        return 1-torch.exp(-pos_limit/self.cfg.rewards.pos_limit_sigma), pos_limit
 
-    def _reward_dof_vel_limits(self):
+    def _reward_dof_vel_limits(self): 
         # Penalize dof velocities too close to the limit
         # clip to max error = 1 rad/s per joint to avoid huge penalties
-        return torch.sum((torch.abs(self.dof_vel) - self.dof_vel_limits*self.cfg.rewards.soft_dof_vel_limit).clip(min=0., max=1.), dim=1)
+        dof_vel_limit = torch.mean((torch.abs(self.dof_vel) - self.dof_vel_limits*self.cfg.rewards.soft_dof_vel_limit).clip(min=0., max=1.), dim=1)
+        return torch.exp(-dof_vel_limit/self.cfg.rewards.dof_vel_limit_sigma), dof_vel_limit
 
-    def _reward_torque_limits(self):
+    def _reward_torque_limits(self): # 惩罚力矩超限
         # penalize torques too close to the limit
-        return torch.sum((torch.abs(self.torques) - self.torque_limits*self.cfg.rewards.soft_torque_limit).clip(min=0.), dim=1)
+        torque_limit_error = torch.mean((torch.abs(self.torques) - self.torque_limits*self.cfg.rewards.soft_torque_limit).clip(min=0.), dim=1)
 
-    def _reward_tracking_lin_vel(self):
+        return torch.exp(-torque_limit_error/self.cfg.rewards.torque_limit_sigma), torque_limit_error
+
+    def _reward_tracking_lin_vel(self): # 奖励追上线速度
         # Tracking of linear velocity commands (xy axes)
         lin_vel_error = torch.sum(torch.square(self.commands[:, :2] - self.base_lin_vel[:, :2]), dim=1)
         return torch.exp(-lin_vel_error/self.cfg.rewards.tracking_sigma), lin_vel_error
     
-    def _reward_tracking_ang_vel(self):
+    def _reward_tracking_ang_vel(self): # 奖励追上角速度
         # Tracking of angular velocity commands (yaw) 
         ang_vel_error = torch.square(self.commands[:, 2] - self.base_ang_vel[:, 2])
         return torch.exp(-ang_vel_error/self.cfg.rewards.tracking_sigma), ang_vel_error
 
-    def _reward_feet_air_time(self):
+    def _reward_feet_air_time(self): #  奖励迈出大步子
         # Reward long steps
         # Need to filter the contacts because the contact reporting of PhysX is unreliable on meshes
         contact = self.contact_forces[:, self.feet_indices, 2] > 1.
@@ -1094,20 +1104,25 @@ class H1():
         rew_airTime = torch.sum((self.feet_air_time - 0.5) * first_contact, dim=1) # reward only on first contact with the ground
         rew_airTime *= torch.norm(self.commands[:, :2], dim=1) > 0.1 #no reward for zero command
         self.feet_air_time *= ~contact_filt
-        return rew_airTime
+        return rew_airTime, self.feet_air_time
     
-    def _reward_stumble(self):
+    def _reward_feet_stumble(self): #新增脚尖踢地面的惩罚
         # Penalize feet hitting vertical surfaces
-        return torch.any(torch.norm(self.contact_forces[:, self.feet_indices, :2], dim=2) >\
-             5 *torch.abs(self.contact_forces[:, self.feet_indices, 2]), dim=1)
+        stumble = torch.where( torch.any(torch.norm(self.contact_forces[:, self.feet_indices, :2], dim=2) >\
+             4 *torch.abs(self.contact_forces[:, self.feet_indices, 2]), dim=1), torch.tensor(-1, dtype=torch.float32), torch.tensor(0, dtype=torch.float32))
+        
+        return stumble, stumble
         
     def _reward_stand_still(self):
         # Penalize motion at zero commands
-        return torch.sum(torch.abs(self.dof_pos - self.default_dof_pos), dim=1) * (torch.norm(self.commands[:, :2], dim=1) < 0.1)
+        
+        stand_still = torch.mean(torch.abs(self.dof_pos - self.default_dof_pos), dim=1) * (torch.norm(self.commands[:, :2], dim=1) < 0.1)
+        return 1-torch.exp(-stand_still/self.cfg.rewards.stand_still_sigma), stand_still
 
     def _reward_feet_contact_forces(self):
         # penalize high contact forces
-        return torch.sum((torch.norm(self.contact_forces[:, self.feet_indices, :], dim=-1) -  self.cfg.rewards.max_contact_force).clip(min=0.), dim=1)
+        feet_contact_forces = torch.mean((torch.norm(self.contact_forces[:, self.feet_indices, :], dim=-1) -  self.cfg.rewards.max_contact_force).clip(min=0.), dim=1)
+        return torch.exp(-feet_contact_forces/self.cfg.rewards.feet_contact_forces_sigma), feet_contact_forces
 
     def _reward_target_jt(self):
         # Penalize distance to target joint angles

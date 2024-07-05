@@ -11,9 +11,9 @@ from torch import nn
 from torchvision.models._utils import IntermediateLayerGetter
 from typing import Dict, List
 
-from util.misc import NestedTensor, is_main_process
+from ..util.misc import NestedTensor, is_main_process # 不在一个目录，需要加..
 
-from .position_encoding import build_position_encoding
+from .position_encoding import build_position_encoding # 当前目录，所以可以用.
 
 import IPython
 e = IPython.embed
